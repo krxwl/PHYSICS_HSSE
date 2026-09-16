@@ -1,12 +1,13 @@
-from numpy import ndarray # быстрый массивчик
+from numpy import ndarray, array # быстрый массивчик
 
-from scipy.optimize import OptimizeResult
 from scipy.integrate import solve_ivp  # обертка решения диффура
 from scipy.constants import g
 
-from math import cos, sin
+from math import cos, sin, radians
 
-import matplotlib
+import matplotlib.pyplot as plt
+from matplotlib.ticker import MultipleLocator # для изменения масштаба
+
 from constants import *
 
 
@@ -17,6 +18,9 @@ class Solver:
         self.resistance_coefficient, \
         self.formula_choice_tag, \
         self.weight = self.read_data()
+
+        if self.formula_choice_tag is False:
+            self.visualise_data(self.get_viscous_resistance_data())
 
 
     def read_data(self) -> tuple[float, float, float, bool, float]:
@@ -30,7 +34,7 @@ class Solver:
         formula_choice_flag: bool = bool(int(input(RESISTANCY_FORMULA_CHOICE_STR)))
         weight: float = float(input(INPUT_WEIGHT_STR))
 
-        return tuple(alpha, v_0, resistance_coefficient, formula_choice_flag, weight)
+        return tuple([alpha, v_0, resistance_coefficient, formula_choice_flag, weight])
 
 
     # coords - текущая точка в которой мы находимся
@@ -41,13 +45,13 @@ class Solver:
         x, y, v_x, v_y = coordinates
 
         # вычисляем производные в точке
-        dvx_dt = - self.resistancy_coefficient / self.weight * v_x
-        dvy_dt = -g - self.resistancy_coefficient / self.weight * v_y
+        dvx_dt = - self.resistance_coefficient / self.weight * v_x
+        dvy_dt = -g - self.resistance_coefficient / self.weight * v_y
 
         dx_dt = v_x
         dy_dt = v_y
 
-        return ndarray([dx_dt, dy_dt, dvx_dt, dvy_dt])
+        return array([dx_dt, dy_dt, dvx_dt, dvy_dt])
 
 
     def hit_ground(self, t: float, coordinates: ndarray[float]) -> float:
@@ -58,21 +62,33 @@ class Solver:
         return coordinates[1]
 
 
-    def get_viscous_resistance_data(self) -> list[float]:
+    def get_viscous_resistance_data(self) -> ndarray[float]:
         # решаем задачу коши
-        result: OptimizeResult = solve_ivp(fun=self.speed_equation, 
+        result = solve_ivp(fun=self.speed_equation, 
                                       t_span=(0, SPAN_MAX_UPPER_BORDER), # область интегрирования
-                                      y0 = (0.0, 0.0, self.v_0 * cos(self.alpha), self.v_0 * sin(self.alpha)), # начальные условия (x0, y0, v_x0, v_y0)
+                                      y0 = (0.0, 0.0, self.v_0 * cos(radians(self.alpha)), self.v_0 * sin(radians(self.alpha))), # начальные условия (x0, y0, v_x0, v_y0)
                                       events=self.hit_ground,  #  перестанет вычислять диффур на остальной области определения после того как событие произойдет
+                                      terminal=True, #  прерваться на падении
+                                      dense_output=True # решение непрерывно
                                       )
+        return result.y
         
-
 
     def visualise_data(self, data: ndarray[float]) -> None:
         """
         построит график на данных
         """
-        pass
+        #  axes - все элементы графика, figure - контейнер верхнего уровня для графика
+        figure, axes = plt.subplots(figsize=(20, 20)) # размер побольше
+        axes.plot(data[0][::10], data[1][::10])  # делаем оси x и y
+        axes.grid() # бьем на клетки
+
+        axes.set_xlim(left=0)
+        axes.set_ylim(bottom=0, top=20)
+        axes.plot(data[0], data[1], color='red', linewidth=5, label="Траектория")
+        
+        plt.show() # показать график
+
 
 
 

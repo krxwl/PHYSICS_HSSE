@@ -10,73 +10,70 @@ import matplotlib
 from constants import *
 
 
-def read_data() -> tuple[float, float, float, bool]:
-    """
-    считывает начальные условия
-    """
-    alpha: float = float(input(INPUT_ALPHA_STR))
-    v_0: float = float(input(INPUT_INITIAL_SPEED_STR))
-    resistance_coefficient: float = float(input(INPUT_COEFFICIENT))
-
-    formula_choice_flag: bool = bool(int(input()))
-    return tuple(alpha, v_0, resistance_coefficient, formula_choice_flag)
+class Solver:
+    def __init__(self):
+        self.alpha, \
+        self.v_0, \
+        self.resistance_coefficient, \
+        self.formula_choice_tag,
+        self.weight = self.read_data()
 
 
-# coords - все неизвестные величины
-def speed_equation(t: float, coordinates: ndarray[float]) -> list[float]:
-    """
-    решаем диффур для вязкого трения
-    """
-    x, y, v_x, v_x = coordinates
-    # TODO( ОБЪЕДИНИТЬ В КЛАСС ДЛЯ ВИДИМОСТИ НАЧАЛЬНЫХ УСЛОВИЙ)
-    # зависимости величин
-    dvx_dt = - resistancy_coefficient / weight * v_x
-    dvy_dt = -g - resistancy_coefficient / m * v_y
+    def read_data(self) -> tuple[float, float, float, bool, float]:
+        """
+        считывает начальные условия
+        """
+        alpha: float = float(input(INPUT_ALPHA_STR))
+        v_0: float = float(input(INPUT_INITIAL_SPEED_STR))
+        resistance_coefficient: float = float(input(INPUT_COEFFICIENT_STR))
 
-    dx_dt = v_x
-    dy_dt = v_y
+        formula_choice_flag: bool = bool(int(input(RESISTANCY_FORMULA_CHOICE_STR)))
+        weight: float = float(input(INPUT_WEIGHT_STR))
 
-    # возвращаем все "скорости величин"
-    return ndarray([dx_dt, dy_dt, dvx_dt, dvy_dt])
+        return tuple(alpha, v_0, resistance_coefficient, formula_choice_flag, weight)
 
 
-def hit_ground(t: float, coordinates: ndarray[float]) -> float:
-    """
-    функция которая когда скорость становится равна нулю перестает
-    вычислять диффур на остальной области определения
-    """
-    return coordinates[1]  # если y нулевой то остановимся
+    # coords - текущая точка в которой мы находимся
+    def speed_equation(self, t: float, coordinates: ndarray[float]) -> list[float]:
+        """
+        решаем диффур для вязкого трения
+        """
+        x, y, v_x, v_y = coordinates
+
+        # вычисляем производные в точке
+        dvx_dt = - self.resistancy_coefficient / self.weight * v_x
+        dvy_dt = -g - self.resistancy_coefficient / self.weight * v_y
+
+        dx_dt = v_x
+        dy_dt = v_y
+
+        return ndarray([dx_dt, dy_dt, dvx_dt, dvy_dt])
 
 
-def get_viscous_resistance_data() -> list[float]:
-    # решаем задачу коши
-    # TODO( ОБЪЕДИНИТЬ В КЛАСС ДЛЯ ВИДИМОСТИ НАЧАЛЬНЫХ УСЛОВИЙ)
-    result: OdeResult = solve_ivp(fun=speed_equation,
-                                  t_span=(0, SPAN_MAX_UPPER_BORDER),
-                                  y0 = (0.0, 0.0, v_0 * cos(alpha), v_0 * sin(alpha)), # начальные условия (x0, y0, v_x0, v_y0)
-                                  events=hit_ground,  #  перестанет вычислять диффур на остальной области определения после того как событие произойдет
-                                  method='RK45')
+    def hit_ground(self, t: float, coordinates: ndarray[float]) -> float:
+        """
+        функция которая когда тело упадет на землю (y=0) перестает
+        интегрировать диффур на остальном интервале
+        """
+        return coordinates[1]
 
 
-def visualise_data(data: ndarray[float]) -> None:
-    """
-    построит график на данных
-    """
-    pass
+    def get_viscous_resistance_data(self) -> list[float]:
+        # решаем задачу коши
+        result: OdeResult = solve_ivp(fun=speed_equation, 
+                                      t_span=(0, SPAN_MAX_UPPER_BORDER), # область интегрирования
+                                      y0 = (0.0, 0.0, v_0 * cos(alpha), v_0 * sin(alpha)), # начальные условия (x0, y0, v_x0, v_y0)
+                                      events=hit_ground,  #  перестанет вычислять диффур на остальной области определения после того как событие произойдет
+                                      )
 
 
-def run_program() -> None:
-    while True:
-        # TODO( ОБЪЕДИНИТЬ В КЛАСС ДЛЯ ВИДИМОСТИ НАЧАЛЬНЫХ УСЛОВИЙ В ДРУГИХ ФУНКЦИЯХ)
-        alpha, v_0, resistance_coefficient, formula_choice_flag = read_data()
+    def visualise_data(self, data: ndarray[float]) -> None:
+        """
+        построит график на данных
+        """
+        pass
 
-        if formula_choice_flag is True:
-            pass
-            # ветка для вязкого трения
-        else:
-            pass
-            # ветка для лобового сопротивления
 
 
 if __name__ == "__main__":
-    run_program()
+    Solver()

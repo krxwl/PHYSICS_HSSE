@@ -1,7 +1,7 @@
 from numpy import ndarray # быстрый массивчик
 
-from scipy import solve_ivp  # для решения диффуров
-from scipy.integrate import OdeResult  # обертка решения диффура
+from scipy.optimize import OptimizeResult
+from scipy.integrate import solve_ivp  # обертка решения диффура
 from scipy.constants import g
 
 from math import cos, sin
@@ -15,7 +15,7 @@ class Solver:
         self.alpha, \
         self.v_0, \
         self.resistance_coefficient, \
-        self.formula_choice_tag,
+        self.formula_choice_tag, \
         self.weight = self.read_data()
 
 
@@ -60,11 +60,12 @@ class Solver:
 
     def get_viscous_resistance_data(self) -> list[float]:
         # решаем задачу коши
-        result: OdeResult = solve_ivp(fun=speed_equation, 
+        result: OptimizeResult = solve_ivp(fun=self.speed_equation, 
                                       t_span=(0, SPAN_MAX_UPPER_BORDER), # область интегрирования
-                                      y0 = (0.0, 0.0, v_0 * cos(alpha), v_0 * sin(alpha)), # начальные условия (x0, y0, v_x0, v_y0)
-                                      events=hit_ground,  #  перестанет вычислять диффур на остальной области определения после того как событие произойдет
+                                      y0 = (0.0, 0.0, self.v_0 * cos(self.alpha), self.v_0 * sin(self.alpha)), # начальные условия (x0, y0, v_x0, v_y0)
+                                      events=self.hit_ground,  #  перестанет вычислять диффур на остальной области определения после того как событие произойдет
                                       )
+        
 
 
     def visualise_data(self, data: ndarray[float]) -> None:

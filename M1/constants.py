@@ -1,5 +1,5 @@
-INPUT_ALPHA_STR: str = "Введите угол:\t"
-INPUT_INITIAL_SPEED_STR: str = "Введите начальную скорость v_0:\t"
+INPUT_ALPHA_STR: str = "Введите угол (в градусах):\t"
+INPUT_INITIAL_SPEED_STR: str = "Введите начальную скорость v_0 (в м/с):\t"
 INPUT_COEFFICIENT_STR: str =  "Введите коэффициент сопротивления:\t" 
 INPUT_WEIGHT_STR: str = "Введите вес тела (в кг): \t"
 

@@ -14,14 +14,16 @@ from constants import *
 # функция, показывающая, когда камень упадет
 def hit_ground(t: float, coordinates: ndarray[float]) -> float:
     """
-    функция которая когда тело упадет на землю (y=0) перестает
-    интегрировать диффур на остальном интервале
+    Функция возвращает текущую высоту y.
+    При падении тела на землю (y = 0) перестает интегрировать
     """
     return coordinates[1]
 
 
+# Перестает интегрировать при срабатывании
 hit_ground.terminal = True
-hit_ground.direction = 1
+# Срабатывает только при движении сверху вниз (то есть когда камень падает)
+hit_ground.direction = -1
 
 
 class Solver:
@@ -35,8 +37,10 @@ class Solver:
         ) = self.read_data()
 
         if self.formula_choice_tag is False:
+            self.current_model_name = "вязкое трение"
             self.visualise_data(self.get_viscous_resistance_data())
         else:
+            self.current_model_name = "лобовое сопротивление"
             self.visualise_data(self.get_frontal_resistance_data())
 
     def read_data(self) -> tuple[float, float, float, bool, float]:
@@ -70,17 +74,14 @@ class Solver:
 
     def quad_speed_equation(self, t: float, coordinates: ndarray[float]) -> list[float]:
         """
-        решаем диффур для вязкого трения
+        решаем диффур для лобового сопротивления
         """
         x, y, v_x, v_y = coordinates
+        v = sqrt(v_x**2 + v_y**2)
 
         # вычисляем производные в точке
-        dvx_dt = (
-            -self.resistance_coefficient / self.weight * v_x * sqrt(v_x**2 + v_y**2)
-        )
-        dvy_dt = -g - self.resistance_coefficient / self.weight * v_y * sqrt(
-            v_x**2 + v_y**2
-        )
+        dvx_dt = -self.resistance_coefficient / self.weight * v_x * v
+        dvy_dt = -g - self.resistance_coefficient / self.weight * v_y * v
 
         dx_dt = v_x
         dy_dt = v_y
@@ -93,7 +94,7 @@ class Solver:
         и проекции начальной скорости
         """
         x0 = 0.0
-        y0 = 0.00000001  # чтобы интегрирование не закончилось сразу же
+        y0 = 0.0001  # чтобы интегрирование не закончилось сразу же
         v_x0 = self.v_0 * cos(radians(self.alpha))
         v_y0 = self.v_0 * sin(radians(self.alpha))
         return array([x0, y0, v_x0, v_y0])
@@ -126,12 +127,22 @@ class Solver:
         """
         #  axes - все элементы графика, figure - контейнер верхнего уровня для графика
         figure, axes = plt.subplots(figsize=(20, 20))  # размер побольше
-        axes.plot(data[0][::10], data[1][::10])  # делаем оси x и y
-        axes.grid()  # бьем на клетки
+        # рисуем траекторию
+        axes.plot(
+            data[0],
+            data[1],
+            color="red",
+            linewidth=2.5,
+            label=f"Траектория: {self.current_model_name}",
+        )
+        axes.grid(True, linestyle="--", alpha=0.6)  # бьем на клетки
 
+        # делаем оси
         axes.set_xlim(left=0)
         axes.set_ylim(bottom=0, top=20)
-        axes.plot(data[0], data[1], color="red", linewidth=5, label="Траектория")
+        axes.set_xlabel("Дальность X, м", fontsize=11)
+        axes.set_ylabel("Высота У, м", fontsize=11)
+        axes.legend()
 
         plt.show()  # показать график
 

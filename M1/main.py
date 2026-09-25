@@ -30,7 +30,7 @@ hit_ground.direction = -1
 class Solver:
     def __init__(self):
         file = open("M1/data.txt", encoding="UTF-8")
-        examples = loadtxt(file)
+        examples = loadtxt(file, ndmin=2)
 
         results: ndarray[ndarray[float]] = []
         if FORMULA_CHOICE_TAG is False:

@@ -1,19 +1,15 @@
-from numpy import ndarray, array, loadtxt, random  # быстрый массивчик
+from numpy import ndarray, array, loadtxt  # быстрый массивчик
 
 from scipy.integrate import solve_ivp  # обертка решения диффура
 from scipy.constants import g
 
-from math import cos, sin, radians, sqrt
+from math import cos, sin, radians, sqrt, exp
 
 import matplotlib.pyplot as plt
-from matplotlib.ticker import MultipleLocator  # для изменения масштаба
 
 from constants import *
 
-FORMULA_CHOICE_TAG = True
 
-def random_rgb_numpy():
-    return tuple(random.randint(0, 256, size=3))
 
 # функция, показывающая, когда камень упадет
 def hit_ground(t: float, coordinates: ndarray[float]) -> float:
@@ -24,6 +20,7 @@ def hit_ground(t: float, coordinates: ndarray[float]) -> float:
     return coordinates[1]
 
 
+points: ndarray[ndarray[float]] = [[], []]
 # Перестает интегрировать при срабатывании
 hit_ground.terminal = True
 # Срабатывает только при движении сверху вниз (то есть когда камень падает)
@@ -32,16 +29,9 @@ hit_ground.direction = -1
 
 class Solver:
     def __init__(self):
-        file = open('M1/data.txt', encoding='UTF-8')
+        file = open("M1/data.txt", encoding="UTF-8")
         examples = loadtxt(file)
-            
-        """(
-            self.alpha,
-            self.v_0,
-            self.resistance_coefficient,
-            self.formula_choice_tag,
-            self.weight,
-        ) = self.read_data()"""
+
         results: ndarray[ndarray[float]] = []
         if FORMULA_CHOICE_TAG is False:
             self.current_model_name = "вязкое трение"
@@ -58,24 +48,11 @@ class Solver:
                 self.v_0 = float(ex[1])
                 self.resistance_coefficient = float(ex[2])
                 self.weight = float(ex[3])
-                results.append(self.get_viscous_resistance_data())
+                results.append(self.get_frontal_resistance_data())
         self.visualise_data(results)
 
-    def read_data(self) -> tuple[float, float, float, bool, float]:
-        """
-        считывает начальные условия
-        """
-        alpha: float = float(input(INPUT_ALPHA_STR))
-        v_0: float = float(input(INPUT_INITIAL_SPEED_STR))
-        resistance_coefficient: float = float(input(INPUT_COEFFICIENT_STR))
-
-        formula_choice_flag: bool = bool(int(input(RESISTANCY_FORMULA_CHOICE_STR)))
-        weight: float = float(input(INPUT_WEIGHT_STR))
-
-        return tuple([alpha, v_0, resistance_coefficient, formula_choice_flag, weight])
-
     # coords - текущая точка в которой мы находимся
-    def speed_equation(self, t: float, coordinates: ndarray[float]) -> array[float]:
+    def speed_equation(self, t: float, coordinates: ndarray[float]) -> ndarray[float]:
         """
         решаем диффур для вязкого трения
         """
@@ -90,7 +67,9 @@ class Solver:
 
         return array([dx_dt, dy_dt, dvx_dt, dvy_dt])
 
-    def quad_speed_equation(self, t: float, coordinates: ndarray[float]) -> ndarray[float]:
+    def quad_speed_equation(
+        self, t: float, coordinates: ndarray[float]
+    ) -> ndarray[float]:
         """
         решаем диффур для лобового сопротивления
         """
@@ -104,9 +83,9 @@ class Solver:
         dx_dt = v_x
         dy_dt = v_y
 
-        return ndarray([dx_dt, dy_dt, dvx_dt, dvy_dt])
+        return array([dx_dt, dy_dt, dvx_dt, dvy_dt])
 
-    def get_start_conditions(self) -> list[float]:
+    def get_start_conditions(self) -> ndarray[float]:
         """
         функция возвращает начальное положение тела
         и проекции начальной скорости
@@ -125,7 +104,7 @@ class Solver:
             y0=self.get_start_conditions(),  # начальные условия (x0, y0, v_x0, v_y0)
             events=hit_ground,  #  перестанет вычислять диффур на остальной области определения после того как событие произойдет
             dense_output=True,  # решение непрерывно
-            max_step=0.1
+            max_step=0.1,
         )
         return result.y
 
@@ -137,7 +116,7 @@ class Solver:
             y0=self.get_start_conditions(),  # начальные условия (x0, y0, v_x0, v_y0)
             events=hit_ground,  #  перестанет вычислять диффур на остальной области определения после того как событие произойдет
             dense_output=True,  # решение непрерывно
-            max_step=0.1
+            max_step=0.1,
         )
         return result.y
 
@@ -154,13 +133,12 @@ class Solver:
                 data[1],
                 color="red",
                 linewidth=2.5,
-                label=f"Траектория: {self.current_model_name}",
             )
         axes.grid(True, linestyle="--", alpha=0.6)  # бьем на клетки
 
         # делаем оси
         axes.set_xlim(left=0)
-        axes.set_ylim(bottom=0, top=20)
+        axes.set_ylim(bottom=0)
         axes.set_xlabel("Дальность X, м", fontsize=11)
         axes.set_ylabel("Высота У, м", fontsize=11)
         axes.legend()

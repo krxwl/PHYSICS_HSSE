@@ -1,4 +1,4 @@
-from numpy import ndarray, array  # быстрый массивчик
+from numpy import ndarray, array, loadtxt, random  # быстрый массивчик
 
 from scipy.integrate import solve_ivp  # обертка решения диффура
 from scipy.constants import g
@@ -10,6 +10,10 @@ from matplotlib.ticker import MultipleLocator  # для изменения ма�
 
 from constants import *
 
+FORMULA_CHOICE_TAG = True
+
+def random_rgb_numpy():
+    return tuple(random.randint(0, 256, size=3))
 
 # функция, показывающая, когда камень упадет
 def hit_ground(t: float, coordinates: ndarray[float]) -> float:
@@ -28,20 +32,34 @@ hit_ground.direction = -1
 
 class Solver:
     def __init__(self):
-        (
+        file = open('M1/data.txt', encoding='UTF-8')
+        examples = loadtxt(file)
+            
+        """(
             self.alpha,
             self.v_0,
             self.resistance_coefficient,
             self.formula_choice_tag,
             self.weight,
-        ) = self.read_data()
-
-        if self.formula_choice_tag is False:
+        ) = self.read_data()"""
+        results: ndarray[ndarray[float]] = []
+        if FORMULA_CHOICE_TAG is False:
             self.current_model_name = "вязкое трение"
-            self.visualise_data(self.get_viscous_resistance_data())
+            for ex in examples:
+                self.alpha = float(ex[0])
+                self.v_0 = float(ex[1])
+                self.resistance_coefficient = float(ex[2])
+                self.weight = float(ex[3])
+                results.append(self.get_viscous_resistance_data())
         else:
             self.current_model_name = "лобовое сопротивление"
-            self.visualise_data(self.get_frontal_resistance_data())
+            for ex in examples:
+                self.alpha = float(ex[0])
+                self.v_0 = float(ex[1])
+                self.resistance_coefficient = float(ex[2])
+                self.weight = float(ex[3])
+                results.append(self.get_viscous_resistance_data())
+        self.visualise_data(results)
 
     def read_data(self) -> tuple[float, float, float, bool, float]:
         """
@@ -57,7 +75,7 @@ class Solver:
         return tuple([alpha, v_0, resistance_coefficient, formula_choice_flag, weight])
 
     # coords - текущая точка в которой мы находимся
-    def speed_equation(self, t: float, coordinates: ndarray[float]) -> list[float]:
+    def speed_equation(self, t: float, coordinates: ndarray[float]) -> array[float]:
         """
         решаем диффур для вязкого трения
         """
@@ -72,7 +90,7 @@ class Solver:
 
         return array([dx_dt, dy_dt, dvx_dt, dvy_dt])
 
-    def quad_speed_equation(self, t: float, coordinates: ndarray[float]) -> list[float]:
+    def quad_speed_equation(self, t: float, coordinates: ndarray[float]) -> ndarray[float]:
         """
         решаем диффур для лобового сопротивления
         """
@@ -86,7 +104,7 @@ class Solver:
         dx_dt = v_x
         dy_dt = v_y
 
-        return array([dx_dt, dy_dt, dvx_dt, dvy_dt])
+        return ndarray([dx_dt, dy_dt, dvx_dt, dvy_dt])
 
     def get_start_conditions(self) -> list[float]:
         """
@@ -107,6 +125,7 @@ class Solver:
             y0=self.get_start_conditions(),  # начальные условия (x0, y0, v_x0, v_y0)
             events=hit_ground,  #  перестанет вычислять диффур на остальной области определения после того как событие произойдет
             dense_output=True,  # решение непрерывно
+            max_step=0.1
         )
         return result.y
 
@@ -118,23 +137,25 @@ class Solver:
             y0=self.get_start_conditions(),  # начальные условия (x0, y0, v_x0, v_y0)
             events=hit_ground,  #  перестанет вычислять диффур на остальной области определения после того как событие произойдет
             dense_output=True,  # решение непрерывно
+            max_step=0.1
         )
         return result.y
 
-    def visualise_data(self, data: ndarray[float]) -> None:
+    def visualise_data(self, results: ndarray[ndarray[float]]) -> None:
         """
         построит график на данных
         """
         #  axes - все элементы графика, figure - контейнер верхнего уровня для графика
         figure, axes = plt.subplots(figsize=(20, 20))  # размер побольше
         # рисуем траекторию
-        axes.plot(
-            data[0],
-            data[1],
-            color="red",
-            linewidth=2.5,
-            label=f"Траектория: {self.current_model_name}",
-        )
+        for data in results:
+            axes.plot(
+                data[0],
+                data[1],
+                color="red",
+                linewidth=2.5,
+                label=f"Траектория: {self.current_model_name}",
+            )
         axes.grid(True, linestyle="--", alpha=0.6)  # бьем на клетки
 
         # делаем оси
